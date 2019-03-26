@@ -3,19 +3,29 @@ import time
 from pprint import pprint
 import matplotlib.pyplot as plt
 import pandas
+from io import StringIO
 
-from alpha_vantage.timeseries import TimeSeries
-from alpha_vantage.techindicators import TechIndicators
+#request parameters
+function = 'TIME_SERIES_INTRADAY'
+symbol = 'GOOGL'
+interval = '60min'
+datatype = 'csv'
+apikey = 'KE1NVXP9LYFO1Y5W'
 
-ts = TimeSeries(key='', output_format='pandas')
+class request_builder(object):
 
-data, meta_data = ts.get_intraday(symbol='MSFT',interval='1min', outputsize='full')
-data['2. high'].plot()
-plt.title("1 min Time Series High")
-plt.show()
+    ALPHA_VANTAGE_API_URL = "https://www.alphavantage.co/query?"
 
-ti = TechIndicators(key='YOUR_API_KEY', output_format='pandas')
-data, meta_data = ti.get_bbands(symbol='GOOGL', interval='60min', time_period=60)
-data.plot()
-plt.title('BBbands indicator for  Google stock (60 min)')
+    def __init__(self):
+        request = ALPHA_VANTAGE_API_URL + 'function=' + function
+
+
+r = requests.get("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=MSFT&interval=5min&apikey=KE1NVXP9LYFO1Y5W&datatype=csv")
+raw = StringIO(r.text)
+
+data = pandas.read_csv(raw)
+print(data)
+
+plt.plot(data['close'], label="Experiment")
+
 plt.show()
