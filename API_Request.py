@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import pandas
 from io import StringIO
+from functools import wraps
 
 #request parameters
 function = 'TIME_SERIES_INTRADAY'
@@ -25,19 +26,42 @@ class request_builder(object):
         self.key = key
         self.output_format = output_format
 
+    @classmethod
+    def output(cls, func):
+        @wraps(func)
+        def formatter(self, *args, **kwargs):
+            for arg in args:
+
+
+
+    def api_caller(self, url):
+
+        response = requests.get(url)
+        try:
+            response = 200
+        except:
+            raise ConnectionError("A nnection error is present,"
+                                  "Status Code: {0}".format(response.status_code))
+        response = StringIO(response.text)
+        data = pandas.read_csv(response)
+        return data
+
         
 
 
 
 
+@request_builder
+def Stock_Time_Series(self):
 
-    def Stock_Time_Series(self):
+@request_builder
+def Foreign_Exchange(self):
 
-    def Foreign_Exchange(self):
+@request_builder
+def Digital_Crypto_Currency(self):
 
-    def Digital_Crypto_Currency(self):
-
-    def Technical_Indicators(self):
+@request_builder
+def Technical_Indicators(self):
 
 
 
