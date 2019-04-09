@@ -5,6 +5,7 @@ import pandas
 from io import StringIO
 from functools import wraps
 import inspect
+import warnings
 
 '''
 This wrapper has been based largely off of the RomelTorres/alpha_vantage wrapper(MIT License)
@@ -21,7 +22,7 @@ class request_builder(object):
 
     ALPHA_VANTAGE_API_URL = "https://www.alphavantage.co/query?"
 
-    def __init__(self, key=None, output_format='pandas', *args, **kwargs):
+    def __init__(self, key=None, output_format='pandas', url=ALPHA_VANTAGE_API_URL, *args, **kwargs):
 
         if key is None:
             key = os.getenv('ALPHAVANTAGE_API_KEY')
@@ -31,86 +32,89 @@ class request_builder(object):
 
         self.key = key
         self.output_format = output_format
+        self.url = url
 
     @classmethod
     def output(cls, func):
 
         argspec = inspect.getfullargspec(func)
+        print("Argspec: ", argspec)
 
         try:
+            print("Route 1")
             positional_count = len(argspec.args) - len(argspec.defaults)
             defaults = dict(zip(argspec.args[positional_count:], argspec.defaults))
+            print("Defaults: ", defaults)
+
         except TypeError:
+            print("Route 2")
             if argspec.args:
+                print(argspec.args)
                 positional_count = argspec.args
                 defaults = {}
             elif argspec.defaults:
                 positional_count = 0
                 defaults = argspec.defaults
 
+        for key in defaults:
+            if defaults[key] == None:
+                warnings.warn("The {} key was deleted due to its value being {}".format(key, defaults[key]))
+
         @wraps(func)
         def formatter(self, *args, **kwargs):
+            iter = 0
+            for key in defaults:
+                if iter == 0:
+                    self.url = "{}{}={}".format(self.url, key, defaults[key])
+                    iter +=1
+                else:
+                    self.url = "{}&{}={}".format(self.url, key, defaults[key])
+                    iter += 1
 
-            used_kwargs = kwargs.copy()
-            used_kwargs.update(zip(argspec.args[positional_count:], args[positional_count]))
+            for idx, arg_name in enumerate(args):
+                print(idx, arg_name)
+                defaults[idx] = arg_name
 
-            function_name, data_key, meta_data_key = func(self, *args, **kwargs)
-            url = "{}function={}".format(request_builder.ALPHA_VANTAGE_API_URL, function_name)
 
-            for idx, arg_name in enumerate(argspec.args[1:]):
-                try:
-                    arg_value = args[idx]
-                except IndexError:
-                    arg_value = used_kwargs[arg_name]
-                if arg_value:
-                    if isinstance(arg_value, tuple) or isinstance(arg_value, list):
-                        arg_value = ','.join(arg_value)
-                    url = '{}&{}={}'.format(url, arg_name, arg_value)
-                if self._append_type:
-                    url = '{}&apikey={}&datatype={}'.format(url, self.key, 'csv')
-                if arg_value:
-                    if isinstance(arg_value, tuple) or isinstance(arg_value, list):
-                        arg_value = ','.join(arg_value)
-                        url = '{}&{}={}'.format(url, arg_name, arg_value)
-                return self.api_caller(url), data_key, meta_data_key
+            self.url = "{}&apikey={}&datatype={}".format(self.url, self.key, 'csv')
+            print(self.url)
+
+            return self.api_caller(self.url)
         return formatter
 
     def api_caller(self, url):
 
         response = requests.get(url)
+
         try:
-            response = 200
+            response == 200
         except:
             raise ConnectionError("A connection error is present,"
                                   "Status Code: {0}".format(response.status_code))
+        print(response.text)
         response = StringIO(response.text)
         data = pandas.read_csv(response)
+        print(data)
         return data
 
+class Stock_Time_Series(request_builder):
 
-@request_builder
-def Stock_Time_Series(self, params, *args, **kwargs):
-    pass
+    @request_builder.output
+    def url_checker(self, function = "TIME_SERIES_INTRADAY", symbol = 'MSFT', interval = None, *args, **kwargs):
+        pass
 
-@request_builder
-def Foreign_Exchange(self, params, *args, **kwargs):
-    pass
+test = Stock_Time_Series(key = apikey)
+x = test.url_checker("test", symbol='GOOGL', function='N/A', datatype="csv")
 
-@request_builder
-def Digital_Crypto_Currency(self, params, *args, **kwargs):
-    pass
-
-@request_builder
-def Technical_Indicators(self, params, *arg, **kwargs):
-    pass
-
-r = requests.get("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=MSFT&interval=5min&apikey=KE1NVXP9LYFO1Y5W&datatype=csv")
-raw = StringIO(r.text)
-
-data = pandas.read_csv(raw)
-print(data)
-
-plt.plot(data['close'], label="Experiment")
-
-plt.show()
-
+# @request_builder
+# class Foreign_Exchange(apikey):
+#     print(apikey)
+#     pass
+#
+# @request_builder
+# def Digital_Crypto_Currency(self, params, key = apikey, *args, **kwargs):
+#     pass
+#
+# @request_builder
+# def Technical_Indicators(self, params, key = apikey, *arg, **kwargs):
+#     pass
