@@ -1,1 +1,1 @@
-from AlphaVantage_Wrapper import *
+from AlphaVantage_Wrapper.API_Request import request_builder
